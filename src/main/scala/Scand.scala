@@ -4,38 +4,36 @@ import scala.util.parsing.combinator.RegexParsers
 object Scand extends RegexParsers {
   def andWithRepetition[T](list: List[Parser[T]],
       reducer: (T, T) => T,
-      default: T): Parser[T] = and(List(), list, reducer, default)
+      default: T): Parser[T] = andWithRepetition(List(), list, reducer, default)
 
   def andWithoutRepetition[T](list: List[Parser[T]],
       reducer: (T, T) => T,
       default: T): Parser[T] = parseList(list, reducer, default) getOrElse success(default)
 
-  def and[T](parsed: List[Parser[T]],
+  def andWithRepetition[T](parsed: List[Parser[T]],
       unparsed: List[Parser[T]],
       reducer: (T, T) => T,
       default: T): Parser[T] = {
-        if (!parsed.isEmpty && !unparsed.isEmpty) {
-          val unparsedProgress = parseUnparsed(parsed, unparsed, reducer, default)
-          val parsedProgress = parseParsed(parsed, unparsed, reducer, default)
-          unparsedProgress map (_ | parsedProgress) getOrElse parsedProgress
-        }
-        else {
+        val unparsedProgress = parseUnparsed(parsed, unparsed, reducer, default)
+        val parsedProgress = parseParsed(parsed, unparsed, reducer, default) getOrElse
           success(default)
-        }
+        unparsedProgress map (_ | parsedProgress) getOrElse parsedProgress
       }
 
   def parseParsed[T](parsed: List[Parser[T]],
       unparsed: List[Parser[T]],
       reducer: (T, T) => T,
-      default: T) = (parsed reduce (_ | _)) ~ and(parsed, unparsed, reducer, default) map {
-        case f ~ s => reducer(f, s)
-      }
+      default: T) = (parsed reduceOption (_ | _)) map (
+        _ ~ andWithRepetition(parsed, unparsed, reducer, default) map {
+          case f ~ s => reducer(f, s)
+        }
+      )
 
   def parseUnparsed[T](parsed: List[Parser[T]],
       unparsed: List[Parser[T]],
       reducer: (T, T) => T,
       default: T) = (unparsed map {parser =>
-        parser ~ and(parser :: parsed, unparsed filterNot (_ == parser), reducer, default) map {
+        parser ~ andWithRepetition(parser :: parsed, unparsed filterNot (_ == parser), reducer, default) map {
           case f ~ s => reducer(f, s)
         }
       }) reduceOption (_ | _)
