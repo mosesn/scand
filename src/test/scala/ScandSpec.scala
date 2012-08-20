@@ -7,34 +7,78 @@ import scala.util.parsing.input.CharSequenceReader
 @RunWith(classOf[JUnitRunner])
 class ScandSpec extends FunSpec {
   describe("Scand") {
-    describe("and") {
-      lazy val fooParser = Scand.stringParser("foo")
-      lazy val barParser = Scand.stringParser("bar")
-      lazy val bazParser = Scand.stringParser("baz")
-      lazy val foo = new CharSequenceReader("foo")
-      lazy val foobar = new CharSequenceReader("foo bar")
-      lazy val foobarbaz = new CharSequenceReader("foo bar baz")
-      lazy val barfoo = new CharSequenceReader("bar foo")
-      lazy val concat = (first: String, second: String) => first + second
+    lazy val fooParser = Scand.stringParser("foo")
+    lazy val barParser = Scand.stringParser("bar")
+    lazy val bazParser = Scand.stringParser("baz")
+    lazy val foo = new CharSequenceReader("foo")
+    lazy val foofoo = new CharSequenceReader("foo foo")
+    lazy val foofoobar = new CharSequenceReader("foo foo bar")
+    lazy val foobar = new CharSequenceReader("foo bar")
+    lazy val foobarbaz = new CharSequenceReader("foo bar baz")
+    lazy val barfoo = new CharSequenceReader("bar foo")
+    lazy val barfoobar = new CharSequenceReader("bar foo bar")
+    lazy val barbazfoobazbar = new CharSequenceReader("bar baz foo baz bar")
+    lazy val concat = (first: String, second: String) => first + second
+    describe("andWithRepetition") {
       it("should parser a single parser normally") {
-        val parser = Scand.and[String](List(fooParser), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser), concat, "")
         parser(foo).get === "foo"
       }
       it("should parser two parsers forwards") {
-        val parser = Scand.and(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
         parser(foobar).get === "foobar"
       }
       it("should parser two parsers backwards") {
-        val parser = Scand.and(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
         parser(barfoo).get === "barfoo"
       }
       it("should parser three parsers forwards") {
-        val parser = Scand.and(List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser, barParser, bazParser), concat, "")
         parser(foobarbaz).get === "foobarbaz"
       }
       it("should parser three parsers in every configuration") {
         for (list <- Util.reorder(List(fooParser, barParser, bazParser))) {
-          val parser = Scand.and(list, concat, "")
+          val parser = Scand.andWithRepetition(list, concat, "")
+          parser(foobarbaz).get === "foobarbaz"
+        }
+      }
+      it("should handle repetition with only one arg.") {
+        val parser = Scand.andWithRepetition(List(fooParser), concat, "")
+        parser(foofoo).get === "foofoo"
+      }
+      it("should handle repetition with two args, in order.") {
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        parser(foofoobar).get === "foofoobar"
+      }
+      it("should handle repetition with two args, out of order.") {
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        parser(barfoobar).get === "barfoobar"
+      }
+      it("should handle repetition with three args, out of order.") {
+        val parser = Scand.andWithRepetition(List(fooParser, barParser, bazParser), concat, "")
+        parser(barbazfoobazbar).get === "barbazfoobazbar"
+      }
+    }
+    describe("andWithoutRepetition") {
+      it("should parser a single parser normally") {
+        val parser = Scand.andWithoutRepetition(List(fooParser), concat, "")
+        parser(foo).get === "foo"
+      }
+      it("should parser two parsers forwards") {
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "")
+        parser(foobar).get === "foobar"
+      }
+      it("should parser two parsers backwards") {
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "")
+        parser(barfoo).get === "barfoo"
+      }
+      it("should parser three parsers forwards") {
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser, bazParser), concat, "")
+        parser(foobarbaz).get === "foobarbaz"
+      }
+      it("should parser three parsers in every configuration") {
+        for (list <- Util.reorder(List(fooParser, barParser, bazParser))) {
+          val parser = Scand.andWithoutRepetition(list, concat, "")
           parser(foobarbaz).get === "foobarbaz"
         }
       }
