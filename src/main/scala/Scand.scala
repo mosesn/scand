@@ -14,24 +14,25 @@ object Scand extends RegexParsers {
   def andWithoutRepetition[T](helper: ParserHelper[T]): Parser[T] =
       parseList(helper) getOrElse success(helper.default)
 
-  private[this] def andWithRepetition[T](helper: ParserHelper[T]): Parser[T] = {
-    val unparsedProgress = parseUnparsed(helper)
-    val parsedProgress = parseParsed(helper) getOrElse success(helper.default)
-    unparsedProgress map (_ | parsedProgress) getOrElse parsedProgress
+  private[this] def andWithRepetition[T](helper: ParserHelper[T]): Parser[T] = Pair(helper.unparsed, helper.parsed) match {
+    case (Nil, Nil) => success(helper.default)
+    case (Nil, list) => rep(list reduce (_ | _)) map {arg =>
+      arg reduceOption (helper.reducer(_, _)) getOrElse helper.default
+    }
+    case (_, Nil) => parseUnparsed(helper)
+    case (_, _) => parseUnparsed(helper) | parseParsed(helper)
   }
 
   private[this] def parseParsed[T](helper: ParserHelper[T]) =
-    (helper.parsed reduceOption (_ | _)) map (
-      _ ~ andWithRepetition(helper) map {
-        applyReducer(_, helper.reducer)
-      }
-    )
+    (helper.parsed reduce (_ | _)) ~ andWithRepetition(helper) map {
+      applyReducer(_, helper.reducer)
+    }
 
   private[this] def parseUnparsed[T](helper: ParserHelper[T]) = (helper.unparsed map {parser =>
     parser ~ andWithRepetition(helper.useParser(parser)) map (
       applyReducer(_, helper.reducer)
     )
-  }) reduceOption (_ | _)
+  }) reduce (_ | _)
 
   private[this] def parseList[T](helper: ParserHelper[T]) = (helper.unparsed map
       (andThenParse(_, helper))
