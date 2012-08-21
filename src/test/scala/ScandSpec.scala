@@ -22,42 +22,50 @@ class ScandSpec extends FunSpec with ShouldMatchers {
     lazy val concat = (first: String, second: String) => first + second
     describe("andWithRepetition") {
       it("should parser a single parser normally") {
-        val parser = Scand.andWithRepetition(List(fooParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "")
         assert(parser(foo).get === "foo")
       }
       it("should parser two parsers forwards") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
         assert(parser(foobar).get === "foobar")
       }
       it("should parser two parsers backwards") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
         assert(parser(barfoo).get === "barfoo")
       }
       it("should parser three parsers forwards") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "")
         assert(parser(foobarbaz).get === "foobarbaz")
       }
       it("should parser three parsers in every configuration") {
         for (list <- Util.reorder(List(fooParser, barParser, bazParser))) {
-          val parser = Scand.andWithRepetition(list, concat, "")
+          val parser = Scand.andWithRepetition(List(), list, concat, "")
           assert(parser(foobarbaz).get === "foobarbaz")
         }
       }
       it("should handle repetition with only one arg.") {
-        val parser = Scand.andWithRepetition(List(fooParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "")
         assert(parser(foofoo).get === "foofoo")
       }
       it("should handle repetition with two args, in order.") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
         assert(parser(foofoobar).get === "foofoobar")
       }
       it("should handle repetition with two args, out of order.") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
         assert(parser(barfoobar).get === "barfoobar")
       }
       it("should handle repetition with three args, out of order.") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "")
         assert(parser(barbazfoobazbar).get === "barbazfoobazbar")
+      }
+      it("should parser a single optional parser normally") {
+        val parser = Scand.andWithRepetition(List(fooParser), List(), concat, "")
+        assert(parser(foo).get === "foo")
+      }
+      it("should parser two optional parsers forwards") {
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), List(), concat, "")
+        assert(parser(foobar).get === "foobar")
       }
     }
     describe("andWithoutRepetition") {

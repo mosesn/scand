@@ -1,10 +1,10 @@
-import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 
 object Scand extends RegexParsers {
-  def andWithRepetition[T](list: List[Parser[T]],
+  def andWithRepetition[T](parsed: List[Parser[T]],
+    unparsed: List[Parser[T]],
     reducer: (T, T) => T,
-    default: T): Parser[T] = andWithRepetition(ParserHelper(List(), list, reducer, default))
+    default: T): Parser[T] = andWithRepetition(ParserHelper(parsed, unparsed, reducer, default))
 
   def andWithoutRepetition[T](list: List[Parser[T]],
     reducer: (T, T) => T,
