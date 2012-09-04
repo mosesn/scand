@@ -1,15 +1,19 @@
 import scala.util.parsing.combinator.RegexParsers
+import scala.util.parsing.input.CharSequenceReader
 
 object Scand extends RegexParsers {
   def andWithRepetition[T](parsed: List[Parser[T]],
     unparsed: List[Parser[T]],
     reducer: (T, T) => T,
-    default: T): Parser[T] = andWithRepetition(ParserHelper(parsed, unparsed, reducer, default))
+    default: T,
+    disabler: Parser[T] => Parser[T]): Parser[T] =
+      andWithRepetition(ParserHelper(parsed, unparsed, reducer, default, disabler))
 
   def andWithoutRepetition[T](list: List[Parser[T]],
     reducer: (T, T) => T,
-    default: T): Parser[T] =
-      andWithoutRepetition(ParserHelper(List(), list, reducer, default))
+    default: T,
+    disabler: Parser[T] => Parser[T]): Parser[T] =
+      andWithoutRepetition(ParserHelper(List(), list, reducer, default, disabler))
 
   def andWithoutRepetition[T](helper: ParserHelper[T]): Parser[T] =
       parseList(helper) getOrElse success(helper.default)
@@ -28,6 +32,16 @@ object Scand extends RegexParsers {
       applyReducer(_, helper.reducer)
     }
 
+  def dontbreak: Parser[String] =
+    rep(List(discardEmpties(opt("string") map {_ getOrElse ("")})) reduce (_ | _)) map {list =>
+      list reduce (_ + _)
+    }
+
+  def break: Parser[String] =
+    rep(List(opt("string") map {_ getOrElse ("")}) reduce (_ | _)) map {list =>
+      list reduce (_ + _)
+    }
+
   private[this] def parseUnparsed[T](helper: ParserHelper[T]) = (helper.unparsed map {parser =>
     parser ~ andWithRepetition(helper.useParser(parser)) map (
       applyReducer(_, helper.reducer)
@@ -43,6 +57,8 @@ object Scand extends RegexParsers {
 
   def stringParser(string: String): Parser[String] = string
 
+  def optStringParser(string: String): Parser[String] = opt(string) map (_ getOrElse "")
+
   private[this] def andThenParse[T](parser: Parser[T],
     helper: ParserHelper[T]): Parser[T] = {
     parser ~ andWithoutRepetition(helper.useParser(parser)) map (
@@ -54,16 +70,28 @@ object Scand extends RegexParsers {
     case f ~ s => reducer(f, s)
   }
 
+  def discardEmpties(parser: Parser[String]): Parser[String] = Parser { input =>
+    parser(input) match {
+      case Success("", _) => Failure("No empties", input)
+      case s @ Success(_, _) => s
+      case noSuccess => noSuccess
+    }
+  }
+
   case class ParserHelper[T](parsed: List[Parser[T]],
     unparsed: List[Parser[T]],
     reducer: (T, T) => T,
-    default: T) {
-    def useParser(parser: Parser[T]) = this.copy(parsed = parser :: this.parsed,
+    default: T,
+    disabler: Parser[T] => Parser[T]) {
+    def useParser(parser: Parser[T]): ParserHelper[T] = this.copy(parsed = disabler(parser) :: this.parsed,
       unparsed = this.unparsed filterNot (_ == parser))
   }
 
   object ParserHelper {
-    def apply[T](list: List[Parser[T]], reducer: (T, T) => T, default: T): ParserHelper[T] =
-      ParserHelper(List(), list, reducer, default)
+    def apply[T](list: List[Parser[T]],
+        reducer: (T, T) => T,
+        default: T,
+        disabler: Parser[T] => Parser[T]): ParserHelper[T] =
+      ParserHelper(List(), list, reducer, default, disabler)
   }
 }

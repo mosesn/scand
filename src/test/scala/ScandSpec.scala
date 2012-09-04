@@ -9,6 +9,7 @@ import org.scalatest.matchers.ShouldMatchers
 class ScandSpec extends FunSpec with ShouldMatchers {
   describe("Scand") {
     lazy val fooParser = Scand.stringParser("foo")
+    lazy val optFooParser = Scand.optStringParser("foo")
     lazy val barParser = Scand.stringParser("bar")
     lazy val bazParser = Scand.stringParser("baz")
     lazy val foo = new CharSequenceReader("foo")
@@ -22,74 +23,85 @@ class ScandSpec extends FunSpec with ShouldMatchers {
     lazy val concat = (first: String, second: String) => first + second
     describe("andWithRepetition") {
       it("should parser a single parser normally") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "", Scand.discardEmpties)
         assert(parser(foo).get === "foo")
       }
       it("should parser two parsers forwards") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(foobar).get === "foobar")
       }
       it("should parser two parsers backwards") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(barfoo).get === "barfoo")
       }
       it("should parser three parsers forwards") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "", Scand.discardEmpties)
         assert(parser(foobarbaz).get === "foobarbaz")
       }
       it("should parser three parsers in every configuration") {
         for (list <- Util.reorder(List(fooParser, barParser, bazParser))) {
-          val parser = Scand.andWithRepetition(List(), list, concat, "")
+          val parser = Scand.andWithRepetition(List(), list, concat, "", Scand.discardEmpties)
           assert(parser(foobarbaz).get === "foobarbaz")
         }
       }
       it("should handle repetition with only one arg.") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser), concat, "", Scand.discardEmpties)
         assert(parser(foofoo).get === "foofoo")
       }
       it("should handle repetition with two args, in order.") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(foofoobar).get === "foofoobar")
       }
       it("should handle repetition with two args, out of order.") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(barfoobar).get === "barfoobar")
       }
       it("should handle repetition with three args, out of order.") {
-        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithRepetition(List(), List(fooParser, barParser, bazParser), concat, "", Scand.discardEmpties)
         assert(parser(barbazfoobazbar).get === "barbazfoobazbar")
       }
       it("should parser a single optional parser normally") {
-        val parser = Scand.andWithRepetition(List(fooParser), List(), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser), List(), concat, "", Scand.discardEmpties)
         assert(parser(foo).get === "foo")
       }
       it("should parser two optional parsers forwards") {
-        val parser = Scand.andWithRepetition(List(fooParser, barParser), List(), concat, "")
+        val parser = Scand.andWithRepetition(List(fooParser, barParser), List(), concat, "", Scand.discardEmpties)
         assert(parser(foobar).get === "foobar")
+      }
+      it("should parser a properly optional parser forwards") {
+        val parser = Scand.andWithRepetition(Nil, List(optFooParser), concat, "", Scand.discardEmpties)
+        assert(parser(foo).get === "foo")
       }
     }
     describe("andWithoutRepetition") {
       it("should parser a single parser normally") {
-        val parser = Scand.andWithoutRepetition(List(fooParser), concat, "")
+        val parser = Scand.andWithoutRepetition(List(fooParser), concat, "", Scand.discardEmpties)
         assert(parser(foo).get === "foo")
       }
       it("should parser two parsers forwards") {
-        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(foobar).get === "foobar")
       }
       it("should parser two parsers backwards") {
-        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "")
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser), concat, "", Scand.discardEmpties)
         assert(parser(barfoo).get === "barfoo")
       }
       it("should parser three parsers forwards") {
-        val parser = Scand.andWithoutRepetition(List(fooParser, barParser, bazParser), concat, "")
+        val parser = Scand.andWithoutRepetition(List(fooParser, barParser, bazParser), concat, "", Scand.discardEmpties)
         assert(parser(foobarbaz).get === "foobarbaz")
       }
       it("should parser three parsers in every configuration") {
         for (list <- Util.reorder(List(fooParser, barParser, bazParser))) {
-          val parser = Scand.andWithoutRepetition(list, concat, "")
+          val parser = Scand.andWithoutRepetition(list, concat, "", Scand.discardEmpties)
           assert(parser(foobarbaz).get === ("foobarbaz"))
         }
+      }
+    }
+
+
+    describe("discardEmpties") {
+      it("should discard empties properly") {
+        assert(Scand.discardEmpties(optFooParser)(foo).get === "foo")
       }
     }
   }
@@ -110,6 +122,7 @@ class ScandSpec extends FunSpec with ShouldMatchers {
       }
     }
   }
+
 }
 
 object Util {
